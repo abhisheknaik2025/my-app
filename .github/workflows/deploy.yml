@@ -1,0 +1,60 @@
+name: My App Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build app
+        run: npm run build
+
+      - name: Zip build files
+        run: |
+          mkdir deploy
+          cp -r .next public package.json next.config.js deploy/
+          cd deploy && zip -r ../deploy.zip .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: deploy-artifact
+          path: deploy.zip
+
+  deploy:
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - name: Download artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: deploy-artifact
+          path: deploy
+
+      - name: Copy files to remote server via WinRM
+        uses: microsoft/psremoteworkflow@v1
+        with:
+          host: ${{ secrets.WIN_SERVER_HOST }}
+          username: ${{ secrets.WIN_SERVER_USER }}
+          password: ${{ secrets.WIN_SERVER_PASS }}
+          script: |
+            Expand-Archive -Path deploy.zip -DestinationPath "D:\GitHub Actions"
+            cd "D:\GitHub Actions"
+            npm install
+            npm run reload
