@@ -31,7 +31,7 @@ jobs:
           cd deploy && zip -r ../deploy.zip .
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: deploy-artifact
           path: deploy.zip
@@ -42,7 +42,7 @@ jobs:
 
     steps:
       - name: Download artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: deploy-artifact
           path: deploy
