@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,23 +24,21 @@ jobs:
       - name: Build app
         run: npm run build
 
-      - name: Prepare deployment package
-        run: |
-          mkdir deploy
-          cp -r .next public package.json next.config.mjs deploy/
-          cd deploy && zip -r ../deploy.zip .
-
-      - name: Copy build to remote Windows server via SCP
+      - name: Copy necessary files to remote Windows Server via SCP
         uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.WIN_SERVER_HOST }}
           username: ${{ secrets.WIN_SERVER_USER }}
           key: ${{ secrets.WIN_SERVER_SSH_KEY }}
           port: 22
-          source: deploy.zip
-          target: D:/GitHubActions/
+          source: |
+            .next
+            public
+            package.json
+            next.config.mjs
+          target: D:/GitHubActions/app
 
-      - name: Run commands on remote Windows server via SSH
+      - name: Run commands on remote Windows Server via SSH
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.WIN_SERVER_HOST }}
@@ -49,8 +47,7 @@ jobs:
           port: 22
           script: |
             powershell -Command "
-              Expand-Archive -Path 'D:\GitHubActions\deploy.zip' -DestinationPath 'D:\GitHubActions\app' -Force;
               cd 'D:\GitHubActions\app';
-              npm install --omit=dev;
+              npm install;
               npm run reload
             "
