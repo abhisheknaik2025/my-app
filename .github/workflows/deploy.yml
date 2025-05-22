@@ -24,37 +24,33 @@ jobs:
       - name: Build app
         run: npm run build
 
-      - name: Zip build files
+      - name: Prepare deployment package
         run: |
           mkdir deploy
           cp -r .next public package.json next.config.mjs deploy/
           cd deploy && zip -r ../deploy.zip .
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: deploy-artifact
-          path: deploy.zip
-
-  deploy:
-    needs: build
-    runs-on: windows-latest
-
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: deploy-artifact
-          path: deploy
-
-      - name: Copy files to remote server via WinRM
-        uses: microsoft/psremoteworkflow@v1
+      - name: Copy build to remote Windows server via SCP
+        uses: appleboy/scp-action@v0.1.4
         with:
           host: ${{ secrets.WIN_SERVER_HOST }}
           username: ${{ secrets.WIN_SERVER_USER }}
-          password: ${{ secrets.WIN_SERVER_PASS }}
+          key: ${{ secrets.WIN_SERVER_SSH_KEY }}
+          port: 22
+          source: deploy.zip
+          target: D:/GitHubActions/
+
+      - name: Run commands on remote Windows server via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.WIN_SERVER_HOST }}
+          username: ${{ secrets.WIN_SERVER_USER }}
+          key: ${{ secrets.WIN_SERVER_SSH_KEY }}
+          port: 22
           script: |
-            Expand-Archive -Path deploy.zip -DestinationPath "D:\GitHub Actions"
-            cd "D:\GitHub Actions"
-            npm install
-            npm run reload
+            powershell -Command "
+              Expand-Archive -Path 'D:\GitHubActions\deploy.zip' -DestinationPath 'D:\GitHubActions\app' -Force;
+              cd 'D:\GitHubActions\app';
+              npm install --omit=dev;
+              npm run reload
+            "
