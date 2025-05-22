@@ -27,7 +27,7 @@ jobs:
       - name: Zip build files
         run: |
           mkdir deploy
-          cp -r . deploy/
+          cp -r .next public package.json next.config.mjs deploy/
           cd deploy && zip -r ../deploy.zip .
 
       - name: Upload artifact
